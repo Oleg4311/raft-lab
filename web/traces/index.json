@@ -1,0 +1,65 @@
+[
+  {
+    "name": "normal",
+    "title": "Обычная работа",
+    "description": "Пять узлов выбирают лидера, клиенты пишут и читают. Каждая запись реплицируется на большинство, и только потом считается принятой.",
+    "bug": null,
+    "file": "normal.json"
+  },
+  {
+    "name": "leader-crash",
+    "title": "Падение лидера",
+    "description": "Лидер падает, остальные ждут тайм-аут, выбирают нового, а вернувшийся узел догоняет журнал. Ни одна принятая запись не теряется.",
+    "bug": null,
+    "file": "leader-crash.json"
+  },
+  {
+    "name": "partition",
+    "title": "Разделение сети",
+    "description": "Лидер с одним последователем отрезан от остальных трёх. Меньшинство не может принять запись, большинство выбирает нового лидера. После починки старый лидер уступает и теряет свои непринятые записи.",
+    "bug": null,
+    "file": "partition.json"
+  },
+  {
+    "name": "bug-nouptodatecheck",
+    "title": "Ошибка: голос без проверки свежести журнала",
+    "description": "голос отдаётся без проверки свежести журнала кандидата. Проверка поймала нарушение «LeaderCompleteness» на зерне 11.",
+    "bug": "NoUpToDateCheck",
+    "file": "bug-nouptodatecheck.json"
+  },
+  {
+    "name": "bug-truncatealways",
+    "title": "Ошибка: лишнее обрезание журнала",
+    "description": "AppendEntries с записями всегда обрезает хвост журнала, даже совпадающий. Проверка поймала нарушение «CommittedPrefix» на зерне 1.",
+    "bug": "TruncateAlways",
+    "file": "bug-truncatealways.json"
+  },
+  {
+    "name": "bug-localreads",
+    "title": "Ошибка: чтение без подтверждения лидерства",
+    "description": "лидер читает из своего состояния без подтверждения лидерства. Проверка поймала нарушение «Linearizability» на зерне 455.",
+    "bug": "LocalReads",
+    "file": "bug-localreads.json"
+  },
+  {
+    "name": "bug-nodedup",
+    "title": "Ошибка: повторное применение команд",
+    "description": "нет защиты от повторного применения одной и той же команды. Проверка поймала нарушение «Linearizability» на зерне 104.",
+    "bug": "NoDedup",
+    "file": "bug-nodedup.json"
+  },
+  {
+    "name": "bug-commitprevioustermbycount",
+    "title": "Ошибка: коммит старого терма (рис. 8)",
+    "description": "запись прошлого терма коммитится по числу копий (рис. 8 статьи). Проверка поймала нарушение «LeaderCompleteness» на зерне 240.",
+    "bug": "CommitPreviousTermByCount",
+    "file": "bug-commitprevioustermbycount.json"
+  },
+  {
+    "name": "bug-votenotpersisted",
+    "title": "Ошибка: голос не сохраняется на диск",
+    "description": "голос не сохраняется: после перезапуска узел голосует повторно в том же терме. Проверка поймала нарушение «ElectionSafety» на зерне 770.",
+    "bug": "VoteNotPersisted",
+    "file": "bug-votenotpersisted.json"
+  }
+]

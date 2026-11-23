@@ -1,0 +1,58 @@
+name: Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Версия для проверки «в сети именно этот коммит»
+        run: echo '{"commit":"${{ github.sha }}","version":"0.1.0"}' > web/version.json
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+  verify-live:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Квитанция выпуска
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsSL -o /tmp/release-receipt.mjs https://github.com/Oleg4311/release-receipt/releases/download/v0.1.0/release-receipt.mjs
+          echo "0fd21b9f9be37f4668ef0272027791e734da56a49b1d81054907aad1b3790892  /tmp/release-receipt.mjs" | sha256sum -c
+          node /tmp/release-receipt.mjs verify https://oleg4311.github.io/raft-lab/             --sha "${{ github.sha }}" --repo "${{ github.repository }}" --workflow CI             --wait 900 --interval 10 --out receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: receipt
+          path: receipt.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: e2e на живом адресе
+        env:
+          BASE_URL: https://oleg4311.github.io/raft-lab/
+        run: npx playwright test --retries=2

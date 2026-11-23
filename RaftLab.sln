@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3BBE46E3-BE14-45AA-9AB1-EF15642D6E35}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaftLab.Core", "src\RaftLab.Core\RaftLab.Core.csproj", "{FF59C30B-5F99-448B-8060-F3717594BDFC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaftLab.Sim", "src\RaftLab.Sim\RaftLab.Sim.csproj", "{F09E3CD4-B066-4FA2-9B43-77828A5B1DF7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaftLab.Cli", "src\RaftLab.Cli\RaftLab.Cli.csproj", "{9DCC85C5-EACA-45B4-BB03-2F62363FA296}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{359A279B-29A5-40C7-8C41-624E63BE6770}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaftLab.Tests", "tests\RaftLab.Tests\RaftLab.Tests.csproj", "{3FCEF17A-11FA-4775-9595-A0CDBEDBFF21}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FF59C30B-5F99-448B-8060-F3717594BDFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF59C30B-5F99-448B-8060-F3717594BDFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF59C30B-5F99-448B-8060-F3717594BDFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF59C30B-5F99-448B-8060-F3717594BDFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F09E3CD4-B066-4FA2-9B43-77828A5B1DF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F09E3CD4-B066-4FA2-9B43-77828A5B1DF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F09E3CD4-B066-4FA2-9B43-77828A5B1DF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F09E3CD4-B066-4FA2-9B43-77828A5B1DF7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9DCC85C5-EACA-45B4-BB03-2F62363FA296}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DCC85C5-EACA-45B4-BB03-2F62363FA296}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DCC85C5-EACA-45B4-BB03-2F62363FA296}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DCC85C5-EACA-45B4-BB03-2F62363FA296}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FCEF17A-11FA-4775-9595-A0CDBEDBFF21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FCEF17A-11FA-4775-9595-A0CDBEDBFF21}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FCEF17A-11FA-4775-9595-A0CDBEDBFF21}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FCEF17A-11FA-4775-9595-A0CDBEDBFF21}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FF59C30B-5F99-448B-8060-F3717594BDFC} = {3BBE46E3-BE14-45AA-9AB1-EF15642D6E35}
+		{F09E3CD4-B066-4FA2-9B43-77828A5B1DF7} = {3BBE46E3-BE14-45AA-9AB1-EF15642D6E35}
+		{9DCC85C5-EACA-45B4-BB03-2F62363FA296} = {3BBE46E3-BE14-45AA-9AB1-EF15642D6E35}
+		{3FCEF17A-11FA-4775-9595-A0CDBEDBFF21} = {359A279B-29A5-40C7-8C41-624E63BE6770}
+	EndGlobalSection
+EndGlobal

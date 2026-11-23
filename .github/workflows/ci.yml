@@ -1,0 +1,63 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    name: тесты (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 9.0.x
+      - run: dotnet build -c Release
+      # отпечатки прогонов закреплены тестами: на Windows и Linux симуляция обязана дать побайтно одно и то же
+      - run: dotnet test -c Release --no-build
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 9.0.x
+      - run: dotnet build -c Release
+      - name: 2000 случайных прогонов обычных параметров
+        run: dotnet run -c Release --no-build --project src/RaftLab.Cli -- fuzz --from 1 --to 2000
+      - name: 400 прогонов в жёстком режиме (частые сбои, потери, батч 1)
+        run: dotnet run -c Release --no-build --project src/RaftLab.Cli -- fuzz --from 1 --to 400 --fault 0.08 --drop 0.05 --batch 1 --etmin 8 --etmax 12 --settle 2500
+      - name: Кластеры из 3 и 7 узлов
+        run: |
+          dotnet run -c Release --no-build --project src/RaftLab.Cli -- fuzz --from 1 --to 400 --nodes 3
+          dotnet run -c Release --no-build --project src/RaftLab.Cli -- fuzz --from 1 --to 400 --nodes 7
+  viewer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 9.0.x
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: dotnet build -c Release
+      - name: Записи в репозитории совпадают с пересчитанными симулятором
+        run: |
+          dotnet run -c Release --no-build --project src/RaftLab.Cli -- traces --out "$RUNNER_TEMP/traces"
+          diff -r web/traces "$RUNNER_TEMP/traces"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/

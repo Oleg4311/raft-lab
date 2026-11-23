@@ -1,0 +1,3 @@
+web/traces/* -text
+*.cs text eol=lf
+*.yml text eol=lf

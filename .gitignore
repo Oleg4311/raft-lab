@@ -5,3 +5,7 @@ obj/
 artifacts/
 site/
 TestResults/
+node_modules/
+test-results/
+playwright-report/
+out-test/

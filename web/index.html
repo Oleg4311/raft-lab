@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raft вживую: выборы, репликация, сбои и пойманные ошибки</title>
+<meta name="description" content="Пошаговый просмотр работы алгоритма консенсуса Raft: падение лидера, разделение сети и ошибки в реализации, которые ловят проверки безопасности и линеаризуемости.">
+<meta name="theme-color" content="#1d4f91">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231d4f91'/%3E%3Ccircle cx='32' cy='14' r='7' fill='%23fff'/%3E%3Ccircle cx='14' cy='44' r='7' fill='%23fff'/%3E%3Ccircle cx='50' cy='44' r='7' fill='%23fff'/%3E%3Cpath d='M32 14L14 44h36z' fill='none' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--ink:#14202e;--mut:#4a5a6c;--line:#d5dee9;--acc:#1d4f91;--acc-ink:#fff;--leader:#1b7a3d;--cand:#a86a00;--follow:#3b5b88;--dead:#7a7f87;--bad:#b3261e;--focus:#1a56db;--m-vote:#8a3ffc;--m-append:#1d4f91;--m-reply:#007d79}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1722;--card:#17212f;--ink:#eaf0f7;--mut:#b4c2d2;--line:#2b3a4d;--acc:#7db4ff;--acc-ink:#07182b;--leader:#6fdc93;--cand:#ffc46b;--follow:#8fb2e6;--dead:#8b929c;--bad:#ff8f86;--focus:#8ab4ff;--m-vote:#c4a0ff;--m-append:#7db4ff;--m-reply:#5fd7d3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.top,main,footer{max-width:1000px;margin:0 auto;padding-left:16px;padding-right:16px}
+.top{padding-top:20px}
+h1{margin:0;font-size:1.6rem;line-height:1.2}
+h2{margin:0 0 8px;font-size:1.05rem}
+.lead{color:var(--mut);margin:6px 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+button,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-height:44px;cursor:pointer}
+button[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:700}
+button.bug[aria-pressed=false]{border-color:var(--bad)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.controls input[type=range]{flex:1;min-width:160px;height:32px}
+.tick{font-variant-numeric:tabular-nums;min-width:7ch;color:var(--mut)}
+.banner{border-radius:10px;padding:10px 14px;margin:0 0 10px;background:#fdecea;color:#611a15}
+@media(prefers-color-scheme:dark){.banner{background:#3a1c19;color:#ffd9d5}}
+.desc{margin:0 0 8px;color:var(--mut)}
+svg{width:100%;height:auto;max-height:430px;display:block}
+.node circle.body{stroke-width:3;fill:var(--card)}
+.node.leader circle.body{stroke:var(--leader);fill:color-mix(in srgb,var(--leader) 14%,var(--card))}
+.node.candidate circle.body{stroke:var(--cand);fill:color-mix(in srgb,var(--cand) 14%,var(--card))}
+.node.follower circle.body{stroke:var(--follow)}
+.node.dead circle.body{stroke:var(--dead);stroke-dasharray:5 4;fill:color-mix(in srgb,var(--dead) 20%,var(--card))}
+.node text{fill:var(--ink);text-anchor:middle;font-size:13px}
+.node text.big{font-size:20px;font-weight:700}
+.node text.sub{fill:var(--mut);font-size:10.5px}
+.group{font-size:11px;fill:var(--mut)}
+.msg{stroke:var(--card);stroke-width:1.5}
+.msg.vote,.msg.voteReply{fill:var(--m-vote)}
+.msg.append{fill:var(--m-append)}
+.msg.appendReply{fill:var(--m-reply)}
+.msg.dup{opacity:.6}
+.lost{fill:var(--bad);font-size:16px;font-weight:700;text-anchor:middle}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.86rem;color:var(--mut);margin:6px 0 0}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.logs{display:grid;gap:6px}
+.logrow{display:flex;gap:6px;align-items:center;min-height:30px}
+.logrow .who{min-width:7.5ch;font-weight:600;white-space:nowrap}
+.entries{display:flex;flex-wrap:wrap;gap:2px;align-items:center}
+.e{min-width:22px;height:22px;border-radius:4px;border:1.5px solid var(--line);font-size:.74rem;display:inline-flex;align-items:center;justify-content:center;color:#111}
+.e.c{border:2.5px solid var(--ink)}
+.e.t0{background:#cfe3ff}.e.t1{background:#ffd9a8}.e.t2{background:#c9efc9}.e.t3{background:#f7c5e0}.e.t4{background:#e1d3ff}.e.t5{background:#fff1a6}
+.skipped{color:var(--mut);font-size:.8rem}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left}
+th{color:var(--mut);font-weight:600}
+.feed{list-style:none;margin:0;padding:0;max-height:210px;overflow:auto;font-size:.9rem}
+.feed li{padding:2px 0;border-bottom:1px dotted var(--line)}
+.feed li.bad{color:var(--bad);font-weight:600}
+.feed .t{color:var(--mut);font-variant-numeric:tabular-nums;margin-right:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+footer{color:var(--mut);font-size:.88rem;padding-top:6px;padding-bottom:36px}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Raft вживую</h1>
+  <p class="lead">Запись работы пяти узлов алгоритма консенсуса Raft (C#, детерминированный симулятор). Листайте тики, смотрите, как выбирается лидер, как реплицируются журналы и что ломается, когда в реализации спрятана ошибка.</p>
+</header>
+<main id="app">
+  <div class="tabs" id="tabs" role="group" aria-label="Сценарии"></div>
+  <section class="card">
+    <h2 id="title">Загрузка…</h2>
+    <p class="desc" id="desc"></p>
+    <div class="banner" id="violation" role="alert" hidden></div>
+    <div class="controls">
+      <button id="play" type="button">▶ Играть</button>
+      <button id="back" type="button" aria-label="Шаг назад">◀</button>
+      <button id="fwd" type="button" aria-label="Шаг вперёд">▶︎</button>
+      <button id="jump" type="button" hidden>⏭ К нарушению</button>
+      <input id="slider" type="range" min="0" max="0" value="0" aria-label="Тик записи">
+      <span class="tick" id="tick" aria-hidden="true">тик 0</span>
+      <label class="sr" for="speed">Скорость</label>
+      <select id="speed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+    </div>
+    <svg id="stage" viewBox="0 0 640 420" role="img" aria-label="Узлы кластера и сообщения между ними"></svg>
+    <div class="legend" aria-hidden="true">
+      <span><i style="background:var(--m-vote)"></i>запрос голоса и ответ</span>
+      <span><i style="background:var(--m-append)"></i>AppendEntries (записи и пульс)</span>
+      <span><i style="background:var(--m-reply)"></i>подтверждение</span>
+      <span><b style="color:var(--bad)">✕</b> сообщение потеряно или отрезано сетью</span>
+    </div>
+    <p class="sr" id="summary" role="status" aria-live="polite"></p>
+  </section>
+  <div class="cols">
+    <section class="card">
+      <h2>Журналы</h2>
+      <div class="logs" id="logs"></div>
+      <p class="skipped">Число в клетке: терм записи. Жирная рамка: запись принята узлом как закоммиченная.</p>
+    </section>
+    <section class="card">
+      <h2>События</h2>
+      <ul class="feed" id="feed" aria-label="Журнал событий"></ul>
+    </section>
+  </div>
+  <section class="card">
+    <h2>Состояние узлов</h2>
+    <div class="scroll" tabindex="0" role="region" aria-label="Таблица состояния узлов, прокручивается по горизонтали"><table>
+      <thead><tr><th>Узел</th><th>Роль</th><th>Терм</th><th>Коммит</th><th>Применено</th><th>Голос за</th><th>Группа сети</th></tr></thead>
+      <tbody id="table"></tbody>
+    </table></div>
+  </section>
+</main>
+<footer>
+  Записи получены запуском симулятора ( <a href="https://github.com/Oleg4311/raft-lab">исходный код</a> ), а не нарисованы вручную. Сделано с помощью Claude.
+</footer>
+<script src="viewer.js"></script>
+</body>
+</html>
