@@ -64,6 +64,8 @@ public sealed class Cluster
         public Command? Cmd { get; set; }
         public long LastAttempt { get; set; }
         public int Target { get; set; }
+        /// <summary>Последняя попытка отклонена (узел не лидер или не работает): повторять можно быстро, не дожидаясь тайм-аута.</summary>
+        public bool Rejected { get; set; }
     }
 
     private readonly SimConfig _cfg;
@@ -110,6 +112,10 @@ public sealed class Cluster
     public bool IsAlive(int id) => _nodes[id] is not null;
     public int Majority => _cfg.Nodes / 2 + 1;
     public int PendingClientOps => _clients.Count(c => c.Op is not null);
+
+    /// <summary>Описание операций, на которые клиент так и не получил ответ (для диагностики живости).</summary>
+    public string PendingDescription() => string.Join("; ", _clients.Where(c => c.Op is not null).Select(c =>
+        $"{c.Op} последняя попытка на тике {c.LastAttempt} к узлу {c.Target} ({(IsAlive(c.Target) ? Nodes[c.Target]!.Role.ToString() : "не работает")}), ждёт записей: {_pending.Count(kv => kv.Value == c)}"));
 
     private void Boot(int id)
     {
@@ -332,7 +338,7 @@ public sealed class Cluster
                 c.Target = _work.Next(_cfg.Nodes); // повтор той же операции (тот же Seq) на другой узел
                 Attempt(c);
             }
-            else if (Now - c.LastAttempt >= 3 && !_pending.Values.Contains(c)) Attempt(c); // последний узел отказал: пробуем другой
+            else if (c.Rejected && Now - c.LastAttempt >= 3) Attempt(c); // последний узел отказал: пробуем другой
         }
     }
 
@@ -349,6 +355,7 @@ public sealed class Cluster
         if (node is null)
         {
             c.Target = _work.Next(_cfg.Nodes);
+            c.Rejected = true;
             return;
         }
         var outbox = new List<Message>();
@@ -358,12 +365,14 @@ public sealed class Cluster
         {
             case Accepted a:
                 _pending[(node.Id, a.Index, a.Term)] = c;
+                c.Rejected = false;
                 break;
             case LocalAnswer la:
                 Complete(c, c.Op!, la.Result);
                 break;
             case NotLeader nl:
                 c.Target = nl.Hint ?? _work.Next(_cfg.Nodes);
+                c.Rejected = true;
                 break;
         }
         Drain(node); // после регистрации ожидания: в кластере из одного узла запись применяется сразу

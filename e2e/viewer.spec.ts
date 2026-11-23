@@ -125,6 +125,7 @@ test('доступность без серьёзных нарушений, в т
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await openScenario(page, 'partition');
+    expect((await new AxeBuilder({ page }).analyze()).violations.map((v) => v.id)).toEqual([]); // нулевой тик: журналы пусты
     await gotoTick(page, 130);
     expect((await new AxeBuilder({ page }).analyze()).violations.map((v) => v.id)).toEqual([]);
     await openScenario(page, 'bug-nodedup');

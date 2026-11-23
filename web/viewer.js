@@ -38,6 +38,7 @@
 
   async function open(item, button) {
     stop();
+    delete document.body.dataset.loaded; // пока запись грузится, тесты должны ждать
     document.querySelectorAll('#tabs button').forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
     const t = await (await fetch('traces/' + item.file)).json();
     // полные журналы для каждого кадра: кадр хранит журнал, только если он изменился
@@ -129,14 +130,14 @@
       row.append(html('span', { class: 'who' }, 'Узел ' + node.id));
       const box = html('div', { class: 'entries', role: 'list', 'aria-label': `Журнал узла ${node.id}` });
       const { log, base } = node.full;
-      if (base > 0) box.append(html('span', { class: 'skipped' }, `…${base} зап.`));
+      if (base > 0) box.append(html('span', { class: 'skipped', role: 'listitem' }, `…${base} зап.`));
       log.forEach((e, i) => {
         const index = base + i + 1;
         const cls = `e t${e.term % 6}` + (index <= node.commit ? ' c' : '');
         const s = html('span', { class: cls, role: 'listitem', title: `индекс ${index}, терм ${e.term}: ${e.cmd}${index <= node.commit ? ' (закоммичена)' : ''}`, 'aria-label': `индекс ${index}, терм ${e.term}, ${e.cmd}` }, String(e.term));
         box.append(s);
       });
-      if (log.length === 0 && base === 0) box.append(html('span', { class: 'skipped' }, 'пусто'));
+      if (log.length === 0 && base === 0) box.append(html('span', { class: 'skipped', role: 'listitem' }, 'пусто'));
       row.append(box);
       logs.append(row);
     }

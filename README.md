@@ -33,17 +33,17 @@
 | `LocalReads` | лидер читает из своего состояния без подтверждения лидерства (устаревшее чтение в меньшинстве) | линеаризуемость |
 | `NoDedup` | повтор команды применяется второй раз | линеаризуемость |
 
-Первая и третья проявляются редко и требуют жёстких параметров (частые сбои, малые тайм-ауты, батч из одной записи): в таблице тестов закреплены именно такие прогоны.
+`CommitPreviousTermByCount` и `VoteNotPersisted` проявляются редко и требуют жёстких параметров (частые сбои, малые тайм-ауты, батч из одной записи): в таблице тестов закреплены именно такие прогоны.
 
 ## Что проверено
 
 - **Корректная реализация.** 4000 случайных прогонов (8 млн тиков, около 480 тысяч операций, около 17 тысяч выборов лидера) без нарушений; 800 прогонов в жёстком режиме (потери 5%, сбои в 8% тиков, тайм-ауты 8–12, батч 1); кластеры из 1, 3 и 7 узлов. CI повторяет перебор на каждой правке.
-- **73 теста xUnit.** Правила Raft по рис. 2 по пунктам (голосование, откат, конфликты, коммит), автомат, проверка линеаризуемости (ручные истории, 300 историй из настоящего последовательного выполнения всегда принимаются, подмена результата ловится), сами проверки безопасности на подстроенных нарушениях, шесть ошибок на закреплённых зёрнах.
+- **72 теста xUnit.** Правила Raft по рис. 2 по пунктам (голосование, откат, конфликты, коммит), автомат, проверка линеаризуемости (ручные истории, 300 историй из настоящего последовательного выполнения всегда принимаются, подмена результата ловится), сами проверки безопасности на подстроенных нарушениях, шесть ошибок на закреплённых зёрнах.
 - **Мутации самого Raft.** Вручную ломались 8 мест ядра (большинство минус один, нестрогая свежесть журнала, голос без сохранения, конфликтный хвост не удаляется, нет шага вниз при большем терме, нет пустой записи лидера, коммит выше присланного, и др.): тесты падают каждый раз.
 - **Воспроизводимость между ОС.** Свой генератор (SplitMix64, проверен по опубликованным значениям) вместо `System.Random`: отпечатки прогонов закреплены тестами и должны совпасть на Windows и в Linux-CI. Записи сценариев в репозитории сверяются побайтно с пересчитанными.
 - **Просмотрщик:** 10 сценариев Playwright на десктопе и телефоне (воспроизведение, разделение сети показывает двух «лидеров», нарушение в записях ошибок, целостность записей, axe в светлой и тёмной теме, прокрутка).
 
-Находки по ходу работы: критерий живости проверялся ровно на последнем тике и ложно срабатывал на выборах, идущих в этот момент (добавлен льготный период); симулятор терял ответ клиента в кластере из одного узла (запись применялась раньше, чем регистрировалось ожидание); `TruncateAlways` порождал бесконечные штормы отказов, из-за чего в записях пришлось ограничить число сообщений на тик.
+Находки по ходу работы: критерий живости проверялся ровно на последнем тике и ложно срабатывал на выборах, идущих в этот момент (добавлен льготный период); симулятор терял ответ клиента в кластере из одного узла (запись применялась раньше, чем регистрировалось ожидание); клиент симулятора после отказа «я не лидер» ждал полный тайм-аут (CI поймал зависшую операцию на одном зерне из 400 в кластере из 7 узлов, исправлено); `TruncateAlways` порождал бесконечные штормы отказов, из-за чего в записях пришлось ограничить число сообщений на тик.
 
 ## Честные ограничения
 
@@ -72,7 +72,7 @@ dotnet run -c Release --project src/RaftLab.Cli -- traces --out web/traces      
 
 ```
 dotnet build -c Release
-dotnet test -c Release                 # 73 теста
+dotnet test -c Release                 # 72 теста
 npm install && npx playwright install chromium
 npm run e2e                            # просмотрщик (поднимает локальный сервер сам)
 ```
@@ -85,6 +85,6 @@ npm run e2e                            # просмотрщик (поднима�
 
 **raft-lab** is a Raft implementation in C# (.NET 9) built as a pure state machine, plus a deterministic cluster simulator with message loss, duplication and delay, network partitions and crash/restart. Every step checks Raft's safety properties (Election Safety, Leader Append-Only, Log Matching, Leader Completeness, State Machine Safety), and the client history is checked for **linearizability** (Wing & Gong search with state memoization, finding the earliest violating moment). Six classic implementation bugs are built in and each one is caught: committing old-term entries by counting (paper's Figure 8), voting without the up-to-date check, a vote that is not persisted, over-eager log truncation, leader-local reads, and a missing client-request dedup.
 
-Verified: 4000 random runs of the correct implementation with no violations (plus a harsh network mode and 1/3/7-node clusters), 73 xUnit tests, 8 manual mutations of the core all caught, bit-for-bit cross-OS reproducibility (own SplitMix64 PRNG; run digests pinned and compared on Windows and Linux CI), and a static viewer replaying simulator traces. Honest limits: no snapshots or membership changes, no Pre-Vote/CheckQuorum, simplified disk model, random search rather than model checking, replayed traces rather than a live simulator in the browser. MIT licensed. Built with Claude.
+Verified: 4000 random runs of the correct implementation with no violations (plus a harsh network mode and 1/3/7-node clusters), 72 xUnit tests, 8 manual mutations of the core all caught, bit-for-bit cross-OS reproducibility (own SplitMix64 PRNG; run digests pinned and compared on Windows and Linux CI), and a static viewer replaying simulator traces. Honest limits: no snapshots or membership changes, no Pre-Vote/CheckQuorum, simplified disk model, random search rather than model checking, replayed traces rather than a live simulator in the browser. MIT licensed. Built with Claude.
 
 **Viewer:** https://oleg4311.github.io/raft-lab/

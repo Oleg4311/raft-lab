@@ -17,9 +17,9 @@ public static class KnownBugs
         yield return (RaftBug.NoUpToDateCheck, With(shortRun, RaftBug.NoUpToDateCheck, 11), "LeaderCompleteness");
         yield return (RaftBug.TruncateAlways, With(shortRun, RaftBug.TruncateAlways, 1), "CommittedPrefix");
         yield return (RaftBug.LocalReads, With(shortRun, RaftBug.LocalReads, 455), "Linearizability");
-        yield return (RaftBug.NoDedup, With(shortRun, RaftBug.NoDedup, 104), "Linearizability");
+        yield return (RaftBug.NoDedup, With(shortRun, RaftBug.NoDedup, 182), "Linearizability");
         yield return (RaftBug.CommitPreviousTermByCount, With(harsh, RaftBug.CommitPreviousTermByCount, 240), "LeaderCompleteness");
-        yield return (RaftBug.VoteNotPersisted, With(voteCfg, RaftBug.VoteNotPersisted, 770), "ElectionSafety");
+        yield return (RaftBug.VoteNotPersisted, With(voteCfg, RaftBug.VoteNotPersisted, 6973), "ElectionSafety");
     }
 
     private static SimConfig With(SimConfig cfg, RaftBug bug, long seed) => cfg with { Seed = seed, Raft = cfg.Raft with { Bugs = bug } };

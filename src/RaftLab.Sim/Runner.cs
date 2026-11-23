@@ -52,7 +52,7 @@ public static class Runner
         if (c.CurrentLeader() is null) return "после починки сети нет лидера";
         if (live.Select(n => n.CommitIndex).Distinct().Count() != 1 || live.Select(n => n.Machine.Snapshot()).Distinct().Count() != 1)
             return "после починки узлы не сошлись: " + string.Join(", ", live.Select(n => $"{n.Id}:commit={n.CommitIndex}"));
-        if (c.PendingClientOps > 0) return $"после починки остались клиенты без ответа: {c.PendingClientOps}";
+        if (c.PendingClientOps > 0) return $"после починки остались клиенты без ответа: {c.PendingClientOps} ({c.PendingDescription()})";
         return null;
     }
 
